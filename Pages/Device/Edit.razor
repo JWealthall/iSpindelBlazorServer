@@ -1,0 +1,114 @@
+﻿@page "/device/edit/{Id:guid}"
+
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject LogDbService LogDb
+
+<h2>Edit Device</h2>
+<hr />
+@if (_device != null)
+{
+    <EditForm Model="@_device" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        <DataAnnotationsValidator />
+        <div class="form-row">
+            <ValidationSummary />  @*This doesn't appear because css is display none*@
+            <div class="w-100"></div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Device Id</label>
+                <InputGuid @bind-Value="@_device.DeviceId" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _device.DeviceId" />
+            </div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Name</label>
+                <InputText @bind-Value="@_device.Name" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _device.Name" />
+            </div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Spindel Id</label>
+                <InputNumber @bind-Value="@_device.SpindelId" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _device.SpindelId" />
+            </div>
+            <div class="w-100"></div>
+            <div class="form-group col-md-12 col-lg-8 col-xl-6">
+                <label class="col-form-label">Description</label>
+                <InputText @bind-Value="@_device.Description" class="form-control" />
+                <ValidationMessage For="() => _device.Description" />
+            </div>
+            <div class="form-group col-md-12 col-lg-8 col-xl-6">
+                <label class="col-form-label">Token</label>
+                <InputText @bind-Value="@_device.Token" class="form-control" />
+                <ValidationMessage For="() => _device.Token" />
+            </div>
+            <div class="w-100"></div>
+            <div class="form-group col">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </EditForm>
+}
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="form-row">
+        <label class="col-12 col-form-label col-form-label-error">@_errorMessage</label>
+    </div>
+}
+
+@code {
+    private Device _device = null;
+    private EditContext _editContext;
+    private string _errorMessage = null;
+
+    [Parameter]
+    public Guid? Id { get; set; } = null;
+
+    //protected override void OnInitialized()
+    //{
+    //    _editContext = new EditContext(_device);
+    //}
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        _errorMessage = "Please fix validation errors";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        _errorMessage = null;
+        var isValid = _editContext.Validate();
+
+        if (isValid)
+        {
+            var res = await LogDb.DeviceSave(_device);
+            if (!res)
+            {
+                _errorMessage = "Failed to update device";
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(_device.StatusData.Message))
+            {
+                _errorMessage = $"Failed to update device - {_device.StatusData.Message}";
+                return;
+            }
+            NavigationManager.NavigateTo($"device/{_device.DeviceId}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        //_data = null;  // This will make the "Loading" appear between changes
+        if (Id != null)
+        {
+            _device = await LogDb.DeviceGet(Id.Value);
+        }
+        else
+        {
+            _device = new Device() { DeviceId = Guid.NewGuid() };
+        }
+        _editContext = new EditContext(_device);
+    }
+}

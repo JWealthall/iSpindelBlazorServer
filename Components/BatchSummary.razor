@@ -1,0 +1,71 @@
+﻿@if (_batch != null)
+{
+    <div class="col-12 col-md-6 col-lg-6 col-xl-4 mb-1 d-flex">
+        <div class="card flex-fill">
+            <div class="card-header">
+                <h5>@_batch.Description</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-4">Start Date</dt>
+                    <dd class="col-8">@_batch.StartDate.ToString()</dd>
+                    <dt class="col-4">End Date</dt>
+                    <dd class="col-8">@_batch.EndDate.ToString()</dd>
+                </dl>
+                @if (_batch.StartGravity.HasValue)
+                {
+                    <dl class="row">
+                        <dt class="col-4">Duration</dt>
+                        <dd class="col-8">@_batch.Duration.ToString("F3")</dd>
+                    </dl>
+                }
+                @if (_batch.StartGravity.HasValue)
+                {
+                    <dl class="row">
+                        <dt class="col-4 card-body-header"></dt>
+                        <dt class="col-4 card-body-header text-right">Gravity</dt>
+                        <dt class="col-4 card-body-header text-right">Temp</dt>
+                        <dt class="col-4">Latest</dt>
+                        <dd class="col-4 text-right">@_batch.EndGravity.ToString("F3")</dd>
+                        <dd class="col-4 text-right">@_batch.EndTemperature.ToString("F1")&deg;@_batch.TempUnits</dd>
+                        <dt class="col-4">First</dt>
+                        <dd class="col-4 text-right">@_batch.StartGravity.ToString("F3")</dd>
+                        <dd class="col-4 text-right">@_batch.StartTemperature.ToString("F1")&deg;@_batch.TempUnits</dd>
+                        <dt class="col-4">Abv &amp; Avg</dt>
+                        <dd class="col-4 text-right">@_batch.Abv.ToString("F2")%</dd>
+                        <dd class="col-4 text-right">@_batch.AvgTemperature.ToString("F1")&deg;@_batch.TempUnits</dd>
+                        <dt class="col-4">Low</dt>
+                        <dd class="col-4 text-right">@_batch.MinGravity.ToString("F3")</dd>
+                        <dd class="col-4 text-right">@_batch.MinTemperature.ToString("F1")&deg;@_batch.TempUnits</dd>
+                        <dt class="col-4">High</dt>
+                        <dd class="col-4 text-right">@_batch.MaxGravity.ToString("F3")</dd>
+                        <dd class="col-4 text-right">@_batch.MaxTemperature.ToString("F1")&deg;@_batch.TempUnits</dd>
+                        <dt class="col-4">Abv H/L</dt>
+                        <dd class="col-4 text-right">@_batch.AbvMaxMin.ToString("F2")%</dd>
+                        <dd class="col-4"></dd>
+                    </dl>
+                }
+            </div>
+            <div class="card-footer text-right">
+                <a class="btn btn-primary mx-1 @((MarkupString)_disabled)" href="/batch/edit/@_batch.BatchId">Edit</a>
+                @if (_batch.StartGravity.HasValue)
+                {
+                    <a class="btn btn-primary mx-1" href="/batch/chart/@_batch.BatchId">Chart</a>
+                }
+                <a class="btn btn-primary mx-1" href="/batch/@_batch.BatchId">Details</a>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    private string _disabled = LogDbService.ReadOnly ? "disabled" : "";
+    private Models.BatchSummary _batch;
+
+    [Parameter]
+    public Models.BatchSummary Batch
+    {
+        get => _batch;
+        set => _batch = value;
+    }
+
+}

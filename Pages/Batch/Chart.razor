@@ -1,0 +1,122 @@
+﻿@page "/batch/chart/{Id:guid}"
+@layout WideLayout
+
+@inject LogDbService LogDb
+@inject IJSRuntime JsRuntime
+
+@if (_data == null)
+{
+    <div class="container">
+        <div class="text-center">
+            <h1 class="display-5">Batch Chart</h1>
+        </div>
+        <p><em>Loading...</em></p>
+    </div>
+}
+else
+{
+    _data.Devices[0].IsDetail = true;
+    <div class="container">
+        <div class="text-center">
+            <h1 class="display-5">@_data.BatchName Chart</h1>
+        </div>
+        <div class="row">
+            <button class="btn btn-primary ml-auto col-6 col-sm-5 col-md-4 col-lg-3 col-xl-2" @onclick="() => _showSummary = !_showSummary" type="button">
+                @if (_showSummary)
+                {
+                    <span>Hide Summary</span>
+                }
+                else
+                {
+                    <span>Show Summary</span>
+                }
+            </button>
+        </div>
+        @if (_showSummary)
+        {
+            <div class="row justify-content-center mt-2" id="collapseSummary">
+                <DeviceSummary Device="@_data.Devices[0]" />
+                @if (_data?.Batches != null && _data?.Batches.Count > 0)
+                {
+                    <BatchSummary Batch="@_data.Batches[0]" />
+                }
+                else
+                {
+                    <div class="row justify-content-center mt-2">
+                        <div class="text-warning">No batches</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    <canvas id="batchChart"></canvas>
+}
+
+@code {
+    private SummaryDataModel _data = null;
+
+    private bool _showSummary = false;
+
+    [Parameter]
+    public Guid? Id { get; set; } = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Displaying the chart has to be done after the render because the "Canvas" isn't there till then.
+        await DisplayChart();
+    }
+
+    private async Task LoadData()
+    {
+        //_data = null;  // This will make the "Loading" appear between changes
+        if (Id != null)
+        {
+            _data = await LogDb.BatchGetWithSummary(Id.Value);
+            if (_data?.Devices != null && _data.Devices.Count > 0) _data.Devices[0].IsDetail = true;
+            if (_data?.Batch?.Logs != null && _data.Batch.Logs.Count > 0)
+                _data.Batch.Logs = _data.Batch.Logs.OrderBy(x => x.Date).ToList();
+        }
+    }
+
+    async Task DisplayChart()
+    {
+        if (_data?.Batch?.Logs == null) return;
+
+        // I'm just passing the raw data into the JavaScript and creating the structure for chart in there
+        var dateSrc = _data.Batch.Logs.Select(l => l.Date).ToList();
+        var gravities = _data.Batch.Logs.Select(l => l.Gravity).ToList();
+        var temperatures = _data.Batch.Logs.Select(l => l.Temperature).ToList();
+        await JsRuntime.InvokeVoidAsync("drawChart", "batchChart", dateSrc, gravities, temperatures);
+    }
+
+    // NB: The example classes below are how you would build up a structure to send to a JavaScript Interop
+    // As I only have one chart in this solution there is no point in full developing this when I can simply pass the data to a function
+    class ChartDe
+    {
+        string Type { get; set; } = "line";
+        ChartDataDe Data { get; set; }
+    }
+
+    class ChartDataDe
+    {
+        string[] Labels { get; set; }
+        DataSetDe[] Datasets { get; set; }
+    }
+
+    class DataSetDe
+    {
+        string Label { get; set; } = "";
+        string YAxisID { get; set; } = "";
+        bool Fill { get; set; } = false;
+        string BackgroundColor { get; set; } = "";
+        string BorderColor { get; set; } = "";
+        object[] Data { get; set; }
+        int BorderWidth { get; set; } = 2;
+        int PointRadius { get; set; } = 0;
+    }
+}

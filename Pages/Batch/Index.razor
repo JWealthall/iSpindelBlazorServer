@@ -1,0 +1,168 @@
+﻿@page "/batch"
+@page "/batch/{Id:guid}"
+
+@inject LogDbService LogDb
+
+@if (_data == null)
+{
+    <div class="text-center">
+        <h1 class="display-5">Batch Summary</h1>
+    </div>
+    <p><em>Loading...</em></p>
+}
+else if (Id != null)
+{
+    <div class="text-center">
+        <h1 class="display-5">@_data.BatchName Summary</h1>
+    </div>
+    @if (_data?.Batches != null && _data.Batches.Count > 0)
+    {
+        <div class="row justify-content-center mt-2">
+            <DeviceSummary Device="@_data.Devices[0]"></DeviceSummary>
+            @if (_data?.Batches != null && _data.Batches.Count > 0)
+            {
+                <BatchSummary Batch="@_data.Batches[0]"></BatchSummary>
+            }
+            else
+            {
+                <div class="row justify-content-center mt-2">
+                    <div class="col text-warning">No batches</div>
+                </div>
+            }
+        </div>
+        @if (_data.Batch != null && _data.Batch.Logs != null && _data.Batch.Logs.Count > 0)
+        {
+            <table class="table table-sm table-striped table-borderless table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th class="text-center"><span class="sort-link" @onclick="@(() => SortTable("Date"))">Date <span class="oi @(GetSortStyle("Date"))"></span></span></th>
+                        <th class="text-right"><span class="sort-link" @onclick="@(() => SortTable("Gravity"))">Gravity <span class="oi @(GetSortStyle("Gravity"))"></span></span></th>
+                        <th class="text-right"><span class="sort-link" @onclick="@(() => SortTable("Temperature"))">Temperature <span class="oi @(GetSortStyle("Temperature"))"></span></span></th>
+                        <th class="text-right"><span class="sort-link" @onclick="@(() => SortTable("Angle"))">Angle <span class="oi @(GetSortStyle("Angle"))"></span></span></th>
+                        <th class="text-right"><span class="sort-link" @onclick="@(() => SortTable("Battery"))">Battery <span class="oi @(GetSortStyle("Battery"))"></span></span></th>
+                        <th class="text-right"><span class="sort-link" @onclick="@(() => SortTable("RSSI"))">RSSI <span class="oi @(GetSortStyle("RSSI"))"></span></span></th>
+                        @if (!LogDbService.ReadOnly)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in _data.Batch.Logs.OrderBy(_currentSortColumn, _isSortedAscending))
+                    {
+                        <tr>
+                            <td class="text-center">@item.Date.ToString()</td>
+                            <td class="text-right">@item.Gravity.ToString("F3")</td>
+                            <td class="text-right">@item.Temperature.ToString("F1")&deg;@item.TempUnits</td>
+                            <td class="text-right">@item.Angle.ToString("F2")&deg;</td>
+                            <td class="text-right">@item.Battery.ToString("F3")</td>
+                            <td class="text-right">@item.RSSI</td>
+                            @if (!LogDbService.ReadOnly)
+                            {
+                                <td class="text-center">
+                                    <a href="/log/delete/@item.LogId">Delete</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else
+    {
+        <div class="row justify-content-center mt-2">
+            <div class="col text-warning">Device not found</div>
+        </div>
+    }
+}
+else
+{
+    <div class="text-center">
+        <h1 class="display-5">iSpindel Batch List</h1>
+    </div>
+
+    @if (_data?.Batches != null && _data.Batches.Count > 0)
+    {
+        <div class="row justify-content-center">
+            @foreach (var d in _data.Batches)
+            {
+                <BatchSummary Batch="@d"></BatchSummary>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row justify-content-center mt-2">
+            <div class="col text-warning">No batchs</div>
+        </div>
+    }
+}
+
+@code {
+    private SummaryDataModel _data = null;
+
+    [Parameter]
+    public Guid? Id { get; set; } = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        //_data = null;  // This will make the "Loading" appear between changes
+        if (Id != null)
+        {
+            _data = await LogDb.BatchGetWithSummary(Id.Value);
+            if (_data?.Devices != null && _data.Devices.Count > 0) _data.Devices[0].IsDetail = true;
+        }
+        else
+        {
+            _data = await LogDb.SummaryData(batchesOnly: true);
+        }
+    }
+
+    //We need a field to tell us which direction
+    //the table is currently sorted by
+    private bool _isSortedAscending = false;
+
+    //We also need a field to tell us which column the table is sorted by.
+    private string _currentSortColumn = "Date";
+
+    private string GetSortStyle(string columnName)
+    {
+        if (_currentSortColumn != columnName)
+        {
+            return "oi-ellipses";
+        }
+        if (_isSortedAscending)
+        {
+            return "oi-sort-ascending";
+        }
+        else
+        {
+            return "oi-sort-descending";
+        }
+    }
+
+    private void SortTable(string columnName)
+    {
+        if (_data?.Batch?.Logs == null || _data.Batch.Logs.Count == 0) return;
+
+        //Sorting against a column that is not currently sorted against.
+        if (columnName != _currentSortColumn)
+        {
+            _currentSortColumn = columnName;
+            _isSortedAscending = true;
+
+        }
+        else //Sorting against same column but in different direction
+        {
+            //Toggle this boolean
+            _isSortedAscending = !_isSortedAscending;
+        }
+    }
+
+}

@@ -1,0 +1,63 @@
+﻿@page "/"
+
+@inject LogDbService LogDb
+
+<div class="text-center">
+    <h1 class="display-5">iSpindel Blazor Server</h1>
+    <p>A simple .Net Core Blazor server for monitoring the hydrometer's information.</p>
+</div>
+
+@if (_data == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row justify-content-center mt-2">
+        <h4 class="">Devices</h4>
+    </div>
+    @if (_data?.Devices != null && _data.Devices.Count > 0)
+    {
+        <div class="row justify-content-center">
+            @foreach (var d in _data.Devices)
+            {
+                <DeviceSummary Device="@d"></DeviceSummary>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row justify-content-center mt-2">
+            <div class="col text-warning">No devices</div>
+        </div>
+    }
+}
+
+<div class="row justify-content-center mt-2">
+    <h4 class="">Batches</h4>
+</div>
+@if (_data?.Batches != null && _data.Batches.Count > 0)
+{
+    <div class="row justify-content-center">
+        @foreach (var b in _data.Batches)
+        {
+            <BatchSummary Batch="@b"></BatchSummary>
+        }
+    </div>
+}
+else
+{
+    <div class="row justify-content-center mt-2">
+        <div class="col text-warning">No batches</div>
+    </div>
+}
+
+@code {
+    private SummaryDataModel _data;
+    private bool _isReadOnly = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await LogDb.SummaryData();
+    }
+}

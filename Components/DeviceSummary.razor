@@ -1,0 +1,62 @@
+﻿@if (_device != null)
+{
+    <div class="col-12 col-md-6 col-lg-6 col-xl-4 mb-1 d-flex">
+        <div class="card flex-fill">
+            <div class="card-header">
+                <h5>@_device.Name</h5>
+                <h6>@_device.Description</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-4">Name</dt>
+                    <dd class="col-8">@_device.Name</dd>
+                    <dt class="col-4">Spindel Id</dt>
+                    <dd class="col-8">@_device.SpindelId</dd>
+                </dl>
+                @if (Device.Date.HasValue)
+                {
+                    <dl class="row @((MarkupString)_dlClass)">
+                        <dt class="col-4">Date</dt>
+                        <dd class="col-8">@_device.Date.ToString()</dd>
+                        <dt class="col-4">Gravity</dt>
+                        <dd class="col-8">@_device.Gravity.ToString("F3")</dd>
+                        <dt class="col-4">Temp</dt>
+                        <dd class="col-8">@_device.Temperature.ToString("F1")&deg;@_device.TempUnits</dd>
+                        <dt class="col-4">Battery</dt>
+                        <dd class="col-8">@_device.Battery.ToString("F2")</dd>
+                        <dt class="col-4">RSSI</dt>
+                        <dd class="col-8">@_device.RSSI.ToString()</dd>
+                    </dl>
+                }
+            </div>
+            <div class="card-footer text-right">
+                @if (Device.IsDetail)
+                {
+                    <a class="btn btn-primary @((MarkupString)_disabled)" href="device/edit/@_device.DeviceId">Edit Device</a>
+                    <a class="btn btn-primary @((MarkupString)_disabled)" href="batch/new/@_device.DeviceId">New Batch</a>
+                }
+                else
+                {
+                    <a class="btn btn-primary" href="device/@_device.DeviceId">Batches</a>
+                }
+            </div>
+        </div>
+    </div>
+}
+@code {
+    private string _disabled = LogDbService.ReadOnly ? "disabled" : "";
+    private Models.DeviceSummary _device;
+    private string _dlClass = "";
+
+    [Parameter]
+    public Models.DeviceSummary Device
+    {
+        get => _device;
+        set
+        {
+            _device = value;
+            _dlClass = _device.Date.HasValue && _device.Date.Value < DateTime.Now.AddHours(-2) ? "text-secondary" : "";
+        }
+    }
+
+}

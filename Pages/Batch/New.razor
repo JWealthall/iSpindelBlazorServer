@@ -1,0 +1,111 @@
+﻿@page "/batch/new/{Id:guid}"
+
+@using System.ComponentModel.DataAnnotations
+
+@inject NavigationManager NavigationManager
+@inject LogDbService LogDb
+
+<h2>Create Batch</h2>
+@if (_device != null)
+{
+    <h5>@_device.Name</h5>
+    <h6>@_device.Description</h6>
+}
+<hr />
+@if (_batch != null)
+{
+    <EditForm Model="@_batch" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        <DataAnnotationsValidator />
+        <div class="form-row">
+            <ValidationSummary />  @*This doesn't appear because css is display none*@
+            <div class="w-100"></div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Device Id</label>
+                <InputGuid @bind-Value="@_batch.DeviceId" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _batch.DeviceId" />
+            </div>
+            <div class="w-100"></div>
+            <div class="form-group col-md-12 col-lg-8 col-xl-6">
+                <label class="col-form-label">Description</label>
+                <InputText @bind-Value="@_batch.Description" class="form-control" />
+                <ValidationMessage For="() => _batch.Description" />
+            </div>
+            <div class="w-100"></div>
+            <div class="form-group col">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </EditForm>
+}
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="form-row">
+        <label class="col-12 col-form-label col-form-label-error">@_errorMessage</label>
+    </div>
+}
+
+<div>
+    <a href="/device/@Id">Back to details</a>
+</div>
+
+@code {
+    private Device _device = null;
+    private Batch _batch = null;
+    private EditContext _editContext;
+    private string _errorMessage = null;
+
+    [Parameter]
+    public Guid? Id { get; set; } = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        _errorMessage = "Please fix validation errors";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        _errorMessage = null;
+        var isValid = _editContext.Validate();
+
+        if (isValid)
+        {
+            var res = await LogDb.BatchAdd(_batch);
+            if (!res)
+            {
+                _errorMessage = "Failed to add batch";
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(_batch.StatusData.Message))
+            {
+                _errorMessage = $"Failed to add batch - {_batch.StatusData.Message}";
+                return;
+            }
+            NavigationManager.NavigateTo($"batch/{_batch.BatchId}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        //_data = null;  // This will make the "Loading" appear between changes
+        if (Id != null)
+        {
+            _device = await LogDb.DeviceGet(Id.Value);
+            if (_device == null)
+            {
+                _errorMessage = "Device not found";
+            }
+            else
+            {
+                _batch = new Batch() { BatchId = Guid.NewGuid(), DeviceId = Id.Value, StartDate = DateTime.Now };
+                _editContext = new EditContext(_batch);
+                _editContext.Validate();
+            }
+        }
+    }
+
+}

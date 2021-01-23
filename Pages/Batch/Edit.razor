@@ -1,0 +1,120 @@
+﻿@page "/batch/edit/{Id:guid}"
+
+@inject NavigationManager NavigationManager
+@inject LogDbService LogDb
+
+<h2>Edit Batch</h2>
+<hr />
+@if (_batch != null)
+{
+    <EditForm Model="@_batch" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+        <DataAnnotationsValidator />
+        <div class="form-row">
+            <ValidationSummary />  @*This doesn't appear because css is display none*@
+            <div class="w-100"></div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Device Id</label>
+                <InputGuid @bind-Value="@_batch.DeviceId" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _batch.DeviceId" />
+            </div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Batch Id</label>
+                <InputGuid @bind-Value="@_batch.BatchId" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _batch.BatchId" />
+            </div>
+            <div class="form-group col-md-6 col-lg-4">
+                <label class="col-form-label">Start Date</label>
+                <InputDate @bind-Value="@_batch.StartDate" class="form-control" readonly="readonly" />
+                <ValidationMessage For="() => _batch.StartDate" />
+            </div>
+            <div class="w-100"></div>
+            <div class="form-group col-md-12 col-lg-8 col-xl-6">
+                <label class="col-form-label">Description</label>
+                <InputText @bind-Value="@_batch.Description" class="form-control" />
+                <ValidationMessage For="() => _batch.Description" />
+            </div>
+            @if (_batch.EndDate.HasValue)
+            {
+                <div class="form-group col-md-6 col-lg-4">
+                    <label class="col-form-label">End Date</label>
+                    <InputDateTime @bind-Value="@_batch.EndDate" class="form-control" readonly="readonly" />
+                    <ValidationMessage For="() => _batch.EndDate" />
+                </div>
+            }
+            <div class="w-100"></div>
+            <div class="form-group col">
+                <button type="submit" class="btn btn-primary">Save</button>
+                @if (!_batch.EndDate.HasValue)
+                {
+                    <a class="btn btn-primary ml-2" href="/batch/end/@Id">End Batch</a>
+                }
+            </div>
+        </div>
+    </EditForm>
+}
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="form-row">
+        <label class="col-12 col-form-label col-form-label-error">@_errorMessage</label>
+    </div>
+}
+
+<div>
+    <a href="/batch/@Id">Back to details</a>
+</div>
+
+@code {
+    private Batch _batch = null;
+    private EditContext _editContext;
+    private string _errorMessage = null;
+
+    [Parameter]
+    public Guid? Id { get; set; } = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        _errorMessage = "Please fix validation errors";
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        _errorMessage = null;
+        var isValid = _editContext.Validate();
+
+        if (isValid)
+        {
+            var res = await LogDb.BatchSave(_batch);
+            if (!res)
+            {
+                _errorMessage = "Failed to update batch";
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(_batch.StatusData.Message))
+            {
+                _errorMessage = $"Failed to update batch - {_batch.StatusData.Message}";
+                return;
+            }
+            NavigationManager.NavigateTo($"batch/{_batch.BatchId}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        //_data = null;  // This will make the "Loading" appear between changes
+        if (Id != null)
+        {
+            _batch = await LogDb.BatchGet(Id.Value);
+            _editContext = new EditContext(_batch);
+        }
+        else
+        {
+            _errorMessage = "Batch not found";
+        }
+    }
+
+}
